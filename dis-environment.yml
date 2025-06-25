@@ -1,0 +1,4 @@
+name: dis-env
+channels:
+  - conda-forge
+prefix: /user/work/rb21991/miniforge3/envs/dis-env
