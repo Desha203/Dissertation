@@ -52,6 +52,7 @@ TRAIN_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/Train_data/'
 VALIDATION_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/Validate_data/'
 UNET_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/UNet_data/'
 
+'''
 test_image_flair=nib.load(TRAIN_DATASET_PATH +'UPENN-GBM-00024_11/UPENN-GBM-00024_11_FLAIR.nii.gz').get_fdata()
 print(test_image_flair.max()) # max pixel size was 629.0 so likely I will standardised to 1
 
@@ -158,20 +159,7 @@ print(test_mask.shape) #(128, 128, 128) needs to be (128, 128, 128,4)
 num_classes = 4
 test_mask = np.eye(num_classes)[test_mask]
 print(test_mask.shape)
-
 '''
-# Initialize OneHotEncoder with categories=[0,1,2,3] explicitly or let it infer
-encoder = OneHotEncoder(categories=[np.arange(4)], sparse=False)
-
-# Fit and transform
-test_mask_encoded = encoder.fit_transform(test_mask)
-
-print(test_mask_encoded)
-
-#test_mask = to_categorical(test_mask, num_classes=4)
-'''
-print("ALLDONE")
-exit()
 ####################################################################
 #####################################
 
@@ -184,8 +172,6 @@ exit()
 
 #Keras datagenerator does ntot support 3d
 
-exit()
-
 # # # images lists harley
 #t1_list = sorted(glob.glob('BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData/*/*t1.nii'))
 t2_list = sorted(glob.glob(TRAIN_DATASET_PATH + '*/*t2.nii'))
@@ -195,7 +181,7 @@ mask_list = sorted(glob.glob(TRAIN_DATASET_PATH + '*/*seg.nii'))
 
 #Each volume generates 18 64x64x64x4 sub-volumes. 
 #Total 369 volumes = 6642 sub volumes
-'''
+
 for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     print("Now preparing image and masks number: ", img)
       
@@ -211,7 +197,7 @@ for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     temp_mask=nib.load(mask_list[img]).get_fdata()
     temp_mask=temp_mask.astype(np.uint8)
     temp_mask[temp_mask==4] = 3  #Reassign mask values 4 to 3
-    #print(np.unique(temp_mask))
+    print(np.unique(temp_mask))
     
     
     temp_combined_images = np.stack([temp_image_flair, temp_image_t1GD, temp_image_t2], axis=3)
@@ -227,7 +213,8 @@ for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     print("Save Me")
     
     # One-hot encode the mask
-    temp_mask = to_categorical(temp_mask, num_classes=4)
+    num_classes = 4
+    temp_mask = np.eye(num_classes)[temp_mask]
     
     # Define save paths
     image_path = Path(TRAIN_DATASET_PATH) / 'UNET_Train_PATH/input_data_3channels/images'
@@ -243,4 +230,4 @@ for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     else:
     
         print("I am useless") 
-'''
+
