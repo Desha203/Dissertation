@@ -37,9 +37,11 @@ base_path = Path(__file__).resolve().parent.parent / "data"
 import numpy as np
 import nibabel as nib
 import glob
-from tensorflow.keras.utils import to_categorical
+#from tensorflow.keras.utils import to_categorical
 import matplotlib.pyplot as plt
 #from tifffile import imsave
+from sklearn.preprocessing import OneHotEncoder
+
 
 from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler()
@@ -150,8 +152,24 @@ my_img = np.load(TRAIN_DATASET_PATH + 'UNET_Train_PATH/combined00024.npy')
 print(f"✅ Loaded shape: {my_img.shape}")
 print(f"📏 Size in MB: {my_img.nbytes / (1024 ** 2):.2f} MB")
 
-# One-hot encode the mask make sure the mask is 3d 
-test_mask = to_categorical(test_mask, num_classes=4)
+# One-hot encode the mask make sure the mask is 3d  
+print(test_mask.shape) #(128, 128, 128) needs to be (128, 128, 128,4)
+
+num_classes = 4
+test_mask = np.eye(num_classes)[test_mask]
+print(test_mask.shape)
+
+'''
+# Initialize OneHotEncoder with categories=[0,1,2,3] explicitly or let it infer
+encoder = OneHotEncoder(categories=[np.arange(4)], sparse=False)
+
+# Fit and transform
+test_mask_encoded = encoder.fit_transform(test_mask)
+
+print(test_mask_encoded)
+
+#test_mask = to_categorical(test_mask, num_classes=4)
+'''
 print("ALLDONE")
 exit()
 ####################################################################
