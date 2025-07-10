@@ -27,10 +27,11 @@ from pathlib import Path
 # Base path: resolve relative to current script location
 base_path = Path(__file__).resolve().parent.parent / "data"
 
+'''
 # Create the dataset directories if they don't exist
 (base_path / "Train_data" / "UNET_Train_PATH").mkdir(parents=True, exist_ok=True)
 (base_path / "Validate_data" / "UNET_Validate_PATH").mkdir(parents=True, exist_ok=True)
-
+'''
 ######################### START ###########################
 
 # importing libraries 
@@ -44,22 +45,16 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler()
 
-# PART 1: Load and preprocess using 1 example #################################################################### 
+# PART 1: Load the correct paths and create a list of all images #################################################################### 
 
 TRAIN_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/Train_data/'
 VALIDATION_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/Validate_data/'
-#UNET_DATASET_PATH = '/user/home/rb21991/DIS/Dissertation/data/UNet_data/'
 
-#####################################
-
-#Now let us apply the same as above to all the images...
-#Merge channels, crop, patchify, save
+#Now for all images merge channels, crop, patchify, save
 #GET DATA READY =  GENERATORS OR OTHERWISE
 
-#Keras datagenerator does ntot support 3d
+# images lists T1 has been excluded since deemed not necessary for training
 
-# # # images lists harley
-#t1_list = sorted(glob.glob('BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData/*/*t1.nii'))
 t2_list = sorted(glob.glob(TRAIN_DATASET_PATH + '*/*T2.nii*'))
 t1GD_list = sorted(glob.glob(TRAIN_DATASET_PATH +'*/*T1GD.nii*'))
 flair_list = sorted(glob.glob(TRAIN_DATASET_PATH +'*/*FLAIR.nii*'))
@@ -68,10 +63,12 @@ mask_list = sorted(glob.glob(TRAIN_DATASET_PATH + '*/*segm.nii*'))
 print(len(t2_list))
 print(len(t1GD_list))
 print(len(flair_list))
-print(len(mask_list))
+print(len(mask_list)) # checking if all lists are of same size. 
 
 #Each volume generates 18 64x64x64x4 sub-volumes. 
 #Total 369 volumes = 6642 sub volumes
+
+# PART 2: For training images: Prepare images and masks in loop ####################################################################################################
 
 for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     print("Now preparing image and masks number: ", img)
@@ -113,11 +110,70 @@ for img in range(len(t2_list)):   #Using t1_list as all lists are of same size
     image_path.mkdir(parents=True, exist_ok=True)
     mask_path.mkdir(parents=True, exist_ok=True)
     
- 
-  
     # Save files
     np.save(image_path / f'image_{img}.npy', temp_combined_images)
     np.save(mask_path / f'mask_{img}.npy', temp_mask)   
     
+# PART 3: For validation images: Prepare images and masks in loop ####################################################################################################
+# Note: This part is similar to the training part, but uses a different dataset path
+
+vt2_list = sorted(glob.glob(VALIDATION_DATASET_PATH + '*/*T2.nii*'))
+vt1GD_list = sorted(glob.glob(VALIDATION_DATASET_PATH +'*/*T1GD.nii*'))
+vflair_list = sorted(glob.glob(VALIDATION_DATASET_PATH +'*/*FLAIR.nii*'))
+vmask_list = sorted(glob.glob(VALIDATION_DATASET_PATH + '*/*segm.nii*'))
+
+print(len(vt2_list))
+print(len(vt1GD_list))
+print(len(vflair_list))
+print(len(vmask_list)) # checking if all lists are of same size. 
+
+#Each volume generates 18 64x64x64x4 sub-volumes. 
+#Total 369 volumes = 6642 sub volumes
+
+
+for img in range(len(vt2_list)):   #Using t1_list as all lists are of same size
+    print("Now preparing image and masks number: ", img)
+
+    temp_image_t2=nib.load(vt2_list[img]).get_fdata()
+    temp_image_t2=scaler.fit_transform(temp_image_t2.reshape(-1, temp_image_t2.shape[-1])).reshape(temp_image_t2.shape)
+
+    temp_image_t1GD=nib.load(vt1GD_list[img]).get_fdata()
+    temp_image_t1GD=scaler.fit_transform(temp_image_t1GD.reshape(-1, temp_image_t1GD.shape[-1])).reshape(temp_image_t1GD.shape)
+   
+    temp_image_flair=nib.load(vflair_list[img]).get_fdata()
+    temp_image_flair=scaler.fit_transform(temp_image_flair.reshape(-1, temp_image_flair.shape[-1])).reshape(temp_image_flair.shape)
+        
+    temp_mask=nib.load(vmask_list[img]).get_fdata()
+    temp_mask=temp_mask.astype(np.uint8)
+    temp_mask[temp_mask==4] = 3  #Reassign mask values 4 to 3
+    print(np.unique(temp_mask))
     
+    
+    temp_combined_images = np.stack([temp_image_flair, temp_image_t1GD, temp_image_t2], axis=3)
+    
+    #Crop to a size to be divisible by 64 so we can later extract 64x64x64 patches. 
+    #cropping x, y, and z
+    temp_combined_images=temp_combined_images[56:184, 56:184, 13:141]
+    temp_mask = temp_mask[56:184, 56:184, 13:141]
+    
+    val, counts = np.unique(temp_mask, return_counts=True)
+    
+    if (1 - (counts[0] / counts.sum())) > 0.01:  # At least 1% useful volume
+     print("Save Me")
+    
+    # One-hot encode the mask for 4
+    num_classes = 4
+    temp_mask = np.eye(num_classes)[temp_mask]
+    
+    image_path = Path(VALIDATION_DATASET_PATH, 'Uimages')
+    mask_path = Path(VALIDATION_DATASET_PATH, 'Umasks')
+
+    image_path.mkdir(parents=True, exist_ok=True)
+    mask_path.mkdir(parents=True, exist_ok=True)
+    
+    # Save files
+    np.save(image_path / f'image_{img}.npy', temp_combined_images)
+    np.save(mask_path / f'mask_{img}.npy', temp_mask)   
+    
+print("All images and masks have been prepared and saved successfully.")
 
