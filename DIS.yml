@@ -1,0 +1,21 @@
+name: myenv
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - tensorflow
+  - matplotlib
+  - numpy
+  - pandas
+  - scikit-learn
+  - tqdm
+  - opencv
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly
+  - nibabel
+  - ca-certificates
+  - certifi
+  - openssl
+prefix: /user/work/rb21991/miniforge3/envs/myenv

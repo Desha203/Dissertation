@@ -43,6 +43,9 @@ def imageLoader(img_dir, img_list, mask_dir, mask_list, batch_size):
             X = load_img(img_dir, img_list[batch_start:limit])
             Y = load_img(mask_dir, mask_list[batch_start:limit])
 
+            X = X.astype(np.float32)  # ✅ Ensure input is float32
+            Y = Y.astype(np.float32)
+
             yield (X,Y) #a tuple with two numpy arrays with batch_size samples     
 
             batch_start += batch_size   
