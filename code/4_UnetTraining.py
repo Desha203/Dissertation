@@ -78,7 +78,7 @@ train_mask_list = sorted(glob.glob('/user/home/rb21991/DIS/Dissertation/data/Tra
 print(len(train_mask_list))
 
 for img in range(len(train_mask_list)):
-    print(img)
+    #print(img)
     temp_image=np.load(train_mask_list[img])
     temp_image = np.argmax(temp_image, axis=3)
     val, counts = np.unique(temp_image, return_counts=True)
@@ -139,6 +139,7 @@ test_mask=np.argmax(test_mask, axis=3)
 
 n_slice=random.randint(0, test_mask.shape[2])
 plt.figure(figsize=(12, 8))
+print(test_img.shape)
 
 plt.subplot(221)
 plt.imshow(test_img[:,:,n_slice, 0], cmap='gray')
@@ -199,7 +200,7 @@ print(model.output_shape)
 
 history=model.fit(train_img_datagen,
           steps_per_epoch=steps_per_epoch,
-          epochs=2,
+          epochs=1,
           verbose=1,
           validation_data=val_img_datagen,
           validation_steps=val_steps_per_epoch,
@@ -209,7 +210,7 @@ history=model.fit(train_img_datagen,
 print('hello')
 model.save('brats_3d.hdf5')
 
-exit()
+
 ##################################################################
 
 
@@ -237,6 +238,7 @@ plt.ylabel('Accuracy')
 plt.legend()
 plt.tight_layout()
 plt.savefig('training_validation_accuracy.png') 
+
 exit()
 #################################################
 

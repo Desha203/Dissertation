@@ -14,7 +14,7 @@ subject_dir = Path("/user/home/ms13525/scratch/hackathon-2025/data/images_struct
 output_base = Path("../data")  # Output root: will contain Train_data/, Validate_data/, Test_data/
 
 pattern = "UPENN-GBM-*_automated_approx_segm.nii.gz"
-num_samples = 10
+num_samples = 40
 train_ratio, val_ratio = 0.8, 0.1  # test will be the rest
 
 
