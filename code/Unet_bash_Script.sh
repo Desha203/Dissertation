@@ -10,6 +10,8 @@
 #SBATCH --error=training_%j.err
 
 # Load modules or activate conda env if needed
-module load cuda/11.8 
+#module load cuda/11.8 
+#module purge
+#module load cuda/12.4.0
 
-python 4_UnetTraining.py 
+python U4_UnetTraining.py 
