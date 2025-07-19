@@ -56,7 +56,7 @@ plt.imshow(test_mask[:,:,n_slice])
 plt.title('Mask')
 
 plt.tight_layout()
-#plt.savefig('SSSegmentation_visualization.png')
+plt.savefig('SSSegmentation_visualization.png')
 
 #just checking things 
 
@@ -119,18 +119,17 @@ val_mask_list = os.listdir(val_mask_dir)
 
 import tensorflow as tf
 
-# List available GPUs
-gpus = tf.config.list_physical_devices('GPU')
+print("TensorFlow version:", tf.__version__)
+print("Num GPUs Available:", len(tf.config.list_physical_devices('GPU')))
 
-if gpus:
-    print(f"GPU(s) available: {[gpu.name for gpu in gpus]}")
-else:
-    print("No GPU available. Training will run on CPU.")
+# List all devices
+for device in tf.config.list_physical_devices():
+    print(device)
 
 exit()
 
 ########################################################################
-batch_size = 32
+batch_size = 2
 
 train_img_datagen = imageLoader(train_img_dir, train_img_list, 
                                 train_mask_dir, train_mask_list, batch_size)
@@ -149,6 +148,8 @@ test_mask=np.argmax(test_mask, axis=3)
 n_slice=random.randint(0, test_mask.shape[2])
 plt.figure(figsize=(12, 8))
 print(test_img.shape)
+print(f"Image shape: {img.shape}, dtype: {img.dtype}, range: {img.min()} - {img.max()}")
+print(f"Mask shape: {msk.shape}, dtype: {msk.dtype}, range: {msk.min()} - {msk.max()}")
 
 plt.subplot(221)
 plt.imshow(test_img[:,:,n_slice, 0], cmap='gray')

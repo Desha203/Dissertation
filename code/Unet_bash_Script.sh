@@ -14,4 +14,6 @@
 #module purge
 #module load cuda/12.4.0
 
-python U4_UnetTraining.py 
+#python 1_moving_folders.py
+python 2_getting_data.py
+#python U4_UnetTraining.py 

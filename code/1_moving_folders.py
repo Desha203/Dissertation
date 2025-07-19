@@ -9,17 +9,17 @@ os.makedirs("../data", exist_ok=True)
 os.makedirs("../results", exist_ok=True)
 
 # --- CONFIGURATION ---
-source_dir = Path("/user/home/ms13525/scratch/hackathon-2025/data/automated_segm")  # Directory with the NIfTI files
+source_dir = Path("/user/home/ms13525/scratch/hackathon-2025/data/images_segm")  # Directory with the NIfTI files
 subject_dir = Path("/user/home/ms13525/scratch/hackathon-2025/data/images_structural")  # Directory with folders for each subject
 output_base = Path("../data")  # Output root: will contain Train_data/, Validate_data/, Test_data/
 
-pattern = "UPENN-GBM-*_automated_approx_segm.nii.gz"
-num_samples = 250
+pattern = "UPENN-GBM-*_segm.nii.gz"
+num_samples = 40
 train_ratio, val_ratio = 0.8, 0.1  # test will be the rest
 
 
 # --- STEP 1: Find and randomly sample files ---
-all_files = sorted(source_dir.glob(pattern)) # should find all 611 auto seg files
+all_files = sorted(source_dir.glob(pattern)) # should find all 611 auto seg files around 130 for manual
 
 print(len(all_files), "files found matching the pattern.")
 
@@ -78,7 +78,7 @@ print("🔄 Step 4: Moving .nii.gz files into their subject folders...")
 for split in ['Train_data', 'Validate_data', 'Test_data']:
     split_path = output_base / split
 
-    for file in split_path.glob("UPENN-GBM-*_*_automated_approx_segm.nii.gz"):
+    for file in split_path.glob("UPENN-GBM-*_*_segm.nii.gz"):
         filename = file.name
 
         # Extract subject ID
