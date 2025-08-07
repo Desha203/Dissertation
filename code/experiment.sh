@@ -13,10 +13,13 @@
 #nvidia-smi
 module add languages/python/tensorflow-2.16.1
 pip install segmentation-models-3D
+pip install albumentations
+pip install "numpy<2.0"
 
 #python preprocessing.py
 #python image_preparation.py
 #python tumorSegm.py
 
-python experiment.py
+#python experiment.py
+python 1_experiment.py
 

@@ -769,8 +769,8 @@ val_patients   = sorted(os.listdir(val_dir))
 # this is where i need to experiment to gain understanding of which weighting best highlights the ED section if that is the project idea I got with
 
 #Define loss, metrics and optimizer to be used for training
-wt0, wt1, wt2, wt3 = 0.25,0.25,0.25,0.25
-
+#wt0, wt1, wt2, wt3 = 0.25,0.25,0.25,0.25
+wt0, wt1, wt2, wt3 = 0.1, 0.5, 0.2, 0.2
 #from tensorflow.keras.optimizers import Adam
 
 import segmentation_models_3D as sm
@@ -788,7 +788,7 @@ optim = keras.optimizers.Adam(LR)
 
 
 # Training parameters
-batch_size = 4
+batch_size = 8
 epochs = 100  # You can increase this
 steps_per_epoch = len(train_patients) // batch_size
 val_steps = len(val_patients) // batch_size
