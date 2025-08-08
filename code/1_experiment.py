@@ -409,21 +409,15 @@ else:
 ######################### Make and check data generators ###########################################
 # Setting up Augmentations
 
-import albumentations as A
-import numpy as np
+from monai.transforms import Compose, RandFlipd, RandGaussianNoised, RandScaleIntensityd
 
-transform = A.Compose([
-    # Crop volume to a fixed size for memory efficiency
-    A.RandomCrop3D(size=(128, 128, 128), p=1.0), #already done so dont really need this line
-    # Randomly remove cubic regions to simulate occlusions
-    A.CoarseDropout3D(
-        num_holes_range=(2, 6),
-        hole_depth_range=(0.1, 0.3),
-        hole_height_range=(0.1, 0.3),
-        hole_width_range=(0.1, 0.3),
-        p=0.5
-    ),
+monai_transform = Compose([
+    RandFlipd(keys=['image', 'label'], spatial_axis=1, prob=0.5),  # flip depth
+    RandFlipd(keys=['image', 'label'], spatial_axis=2, prob=0.5),  # flip height
+    RandGaussianNoised(keys=['image'], prob=0.3, mean=0.0, std=0.1),
+    RandScaleIntensityd(keys=['image'], factors=0.1, prob=0.3),
 ])
+
 
 def load_modalities(patient_dir, modality_indices): # goes through each of the patient folders and stack the modalities that i need for a give model.
     modality_map = {
@@ -445,6 +439,53 @@ def load_modalities(patient_dir, modality_indices): # goes through each of the p
 def load_mask(patient_dir):
     return np.load(os.path.join(patient_dir, 'mask.npy'))
 
+
+def imageLoader(data_dir, patient_list, batch_size, modality_indices):
+    L = len(patient_list)
+    while True:
+        batch_start = 0
+        batch_end = batch_size
+        while batch_start < L:
+            limit = min(batch_end, L)
+            patients = patient_list[batch_start:limit]
+
+            X_batch = []
+            Y_batch = []
+
+            for patient in patients:
+                patient_dir = os.path.join(data_dir, patient)
+
+                # Load modalities: shape (C, 128, 128, 128)
+                X = load_modalities(patient_dir, modality_indices)
+
+                # Load mask: shape (128, 128, 128)
+                Y = load_mask(patient_dir).astype(np.uint8)  # shape: (128,128,128)
+
+                # Add channel to mask: (1, D, H, W)
+                Y = Y[np.newaxis, ...]
+
+                # Wrap for MONAI
+                sample = {
+                    'image': X,      # Already (C, D, H, W)
+                    'label': Y       # (1, D, H, W)
+                }
+
+                # Apply MONAI transform
+                augmented = monai_transform(sample)
+
+                # Convert back to TensorFlow format: (D, H, W, C)
+                X_tf = np.transpose(augmented['image'], (1, 2, 3, 0))
+                Y_tf = augmented['label'][0]  # Remove channel dim
+
+                X_batch.append(X_tf)
+                Y_batch.append(Y_tf)
+
+            yield np.array(X_batch, dtype=np.float32), np.array(Y_batch, dtype=np.float32)
+
+            batch_start += batch_size
+            batch_end += batch_size
+
+'''
 def imageLoader(data_dir, patient_list, batch_size, modality_indices):
     L = len(patient_list)
     while True:
@@ -484,7 +525,7 @@ def imageLoader(data_dir, patient_list, batch_size, modality_indices):
             batch_start += batch_size
             batch_end += batch_size
 
-
+'''
 
 import os
 import random
@@ -857,7 +898,7 @@ class BestEpochCallback(keras.callbacks.Callback):
 
 # Training parameters
 batch_size = 4
-epochs = 1 # You can increase this
+epochs = 100 # You can increase this
 steps_per_epoch = len(train_patients) // batch_size
 val_steps = len(val_patients) // batch_size
 

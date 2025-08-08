@@ -514,7 +514,7 @@ plt.tight_layout()
 plt.show()
 plt.savefig("example_generator_data.png")
 
-
+'''
 ################################### Load 3d Unet ##############################################
 
 from keras.models import Model
@@ -594,7 +594,7 @@ model = simple_unet_model(128, 128, 128, 3, 4)
 print(model.input_shape)
 print(model.output_shape)
 
-
+'''
 #################### enquire about masks ###################################
 
 # Paths
@@ -759,8 +759,8 @@ for patient in val_patients_all:
 # Final filtered lists
 train_patients = valid_train_patients
 val_patients   = valid_val_patients
-
 '''
+
 train_patients = sorted(os.listdir(train_dir))
 val_patients   = sorted(os.listdir(val_dir))
 '''
@@ -793,7 +793,7 @@ epochs = 100  # You can increase this
 steps_per_epoch = len(train_patients) // batch_size
 val_steps = len(val_patients) // batch_size
 
-
+'''
 ########################################################### TRAIN MODELS ###################################################################
 for combo in modality_combos:
     print(f"Training model with modalities: {combo}")
@@ -843,7 +843,7 @@ for combo in modality_combos:
 
 ################################### evaluation and viz ############################################################
 
-
+'''
 import os
 import re
 import numpy as np
@@ -856,7 +856,7 @@ batch_size = 1
 n_classes = 4
 #val_dir = VALIDATION_DATASET_PATH
 val_dir = '/user/home/rb21991/DIS/Dissertation/data/Validate_data/'
-val_patient_list = sorted(os.listdir(val_dir))
+val_patient_list = val_patients
 
 best_iou = 0
 best_model_name = None
@@ -921,7 +921,7 @@ import matplotlib.pyplot as plt
 n_slice = 60  # slice index for visualisation
 
 # Get a random patient
-patients = sorted(os.listdir(val_dir))
+patients = val_patients
 random_patient = random.choice(patients)
 patient_path = os.path.join(val_dir, random_patient)
 
