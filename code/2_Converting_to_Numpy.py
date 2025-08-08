@@ -16,6 +16,7 @@ I will be pre-processing my training and validation images for semantic segmenta
 import numpy as np
 import nibabel as nib
 import glob
+import os
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler()

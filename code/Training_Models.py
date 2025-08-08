@@ -284,7 +284,7 @@ class BestEpochCallback(keras.callbacks.Callback):
 
 # Training parameters
 batch_size = 4
-epochs = 1 # You can increase this
+epochs = 100 # You can increase this
 steps_per_epoch = len(train_patients) // batch_size
 val_steps = len(val_patients) // batch_size
 

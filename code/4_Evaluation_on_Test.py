@@ -20,11 +20,6 @@ import numpy as np
 from keras.models import load_model
 from keras.metrics import MeanIoU
 import matplotlib.pyplot as plt
-
-from Training_Models import load_modalities
-from Training_Models import load_mask
-from Training_Models import imageLoader
-
 import random
 import tensorflow as tf
 
@@ -64,6 +59,65 @@ print(f"Filtered {len(val_patients)} validation patients.")
 
 val_patient_list = val_patients
 
+# Loading data generators
+
+# Creating data generator dictonaries #################################
+
+def load_modalities(patient_dir, modality_indices): # goes through each of the patient folders and stack the modalities that i need for a give model.
+    modality_map = {
+        0: 't1.npy',
+        1: 't1GD.npy',
+        2: 't2.npy',
+        3: 'flair.npy'
+    }
+
+    modalities = []
+    for idx in modality_indices:
+        modality_file = modality_map[idx]
+        modality_path = os.path.join(patient_dir, modality_file)
+        data = np.load(modality_path)
+        modalities.append(data)
+
+    return np.stack(modalities, axis=0)  # Shape: (C, 128, 128, 128)
+
+def load_mask(patient_dir):
+    return np.load(os.path.join(patient_dir, 'mask.npy'))
+
+
+def imageLoader(data_dir, patient_list, batch_size, modality_indices):
+    L = len(patient_list)
+    while True:
+        batch_start = 0
+        batch_end = batch_size
+        while batch_start < L:
+            limit = min(batch_end, L)
+            patients = patient_list[batch_start:limit]
+
+            X_batch = []
+            Y_batch = []
+
+            for patient in patients:
+                patient_dir = os.path.join(data_dir, patient)
+
+                # Load modalities: shape (C, 128, 128, 128)
+                X = load_modalities(patient_dir, modality_indices)
+
+                # Load mask: shape (128, 128, 128)
+                Y = load_mask(patient_dir).astype(np.uint8)  # shape: (128,128,128)
+                #print(Y.shape)
+
+                # Transpose X to (128, 128, 128, C) for TensorFlow
+                X = np.transpose(X, (1, 2, 3, 0))
+
+                   
+
+                X_batch.append(X)
+                Y_batch.append(Y)
+
+            yield np.array(X_batch, dtype=np.float32), np.array(Y_batch, dtype=np.float32)
+
+            batch_start += batch_size
+            batch_end += batch_size
 
 # Prediction parameters  ###########################################################
 batch_size = 4
@@ -78,6 +132,65 @@ best_iou_for_best_accuracy = 0
 
 # Mean IOU and Accuracy Evaluation #################################################
 
+for model_file in os.listdir(model_dir):
+    if not (model_file.endswith('.hdf5') or model_file.endswith('.keras')):
+        continue
+
+    model_path = os.path.join(model_dir, model_file)
+    print(f"\nLoading model: {model_file}")
+
+    # Extract modality indices from filename
+    modality_indices = list(map(int, re.findall(r'\d+', model_file)))
+    print(f"Using modality indices: {modality_indices}")
+
+    # Load model
+    model = load_model(model_path, compile=False)
+
+    # Re-init the generator
+    test_img_datagen = imageLoader(val_dir, val_patient_list, batch_size, modality_indices)
+
+    # Set up metrics
+    iou_metric = MeanIoU(num_classes=n_classes)
+    total_correct = 0
+    total_pixels = 0
+
+    num_batches = len(val_patient_list) // batch_size
+
+    for _ in range(num_batches):
+        test_image_batch, test_mask_batch = next(test_img_datagen)
+        test_mask_batch_argmax = np.argmax(test_mask_batch, axis=-1)
+
+        test_pred_batch = model.predict(test_image_batch)
+        test_pred_batch_argmax = np.argmax(test_pred_batch, axis=-1)
+
+        # Update IoU
+        iou_metric.update_state(test_mask_batch_argmax.flatten(), test_pred_batch_argmax.flatten())
+
+        # Update accuracy
+        total_correct += np.sum(test_mask_batch_argmax == test_pred_batch_argmax)
+        total_pixels += test_mask_batch_argmax.size
+
+    # Final metrics per model
+    mean_iou = iou_metric.result().numpy()
+    avg_accuracy = total_correct / total_pixels
+
+    print(f"Mean IoU: {mean_iou:.4f}")
+    print(f"Average Accuracy: {avg_accuracy:.4f}")
+
+    # Track best model
+    if mean_iou > best_iou:
+        best_iou = mean_iou
+        best_model_name = model_file
+
+    if avg_accuracy > best_accuracy:
+        best_accuracy = avg_accuracy
+        best_model_name_accuracy = model_file
+
+print(f"\nBest model: {best_model_name} with Mean IoU: {best_iou:.4f}")
+print(f"Model with Best Average Accuracy: {best_model_name_accuracy} with Average Accuracy: {best_accuracy:.4f})")
+
+
+'''
 for model_file in os.listdir(model_dir):
     if not (model_file.endswith('.hdf5') or model_file.endswith('.keras')):
         continue
@@ -123,11 +236,8 @@ for model_file in os.listdir(model_dir):
         total_pixels = test_mask_batch_argmax.size
         batch_accuracy = correct_pixels / total_pixels
         total_accuracy += batch_accuracy
-
-
-avg_accuracy = total_accuracy / num_batches
-
-print(f"  Average Accuracy: {avg_accuracy:.4f}")
+        avg_accuracy = total_accuracy / num_batches
+        print(f"  Average Accuracy: {avg_accuracy:.4f}")
 
 if mean_iou > best_iou:
     best_iou = mean_iou
@@ -140,7 +250,7 @@ if avg_accuracy > best_accuracy:
 
 print(f"\nBest model: {best_model_name} with Mean IoU: {best_iou:.4f}")
 print(f"Model with Best Average Accuracy: {best_model_name_accuracy} with Average Accuracy: {best_accuracy:.4f} )")
-
+'''
 # Visualisation of Predictions on a Random Patient Slice Multiple Modalities ##########################
 
 # Get a random patient and slice for visualisation
@@ -155,7 +265,7 @@ if not val_patient_list:
     print(f"Error: No patient folders found in {val_dir}")
 else:
     # Randomly select a patient to visualize
-    patient_to_visualize = random.choice(val_patient_list)
+    patient_to_visualize = random_patient
     print(f"Randomly selected patient for visualization: {patient_to_visualize}")
 
     patient_path = os.path.join(val_dir, patient_to_visualize)
@@ -170,7 +280,7 @@ else:
         if os.path.exists(sample_npy_path):
             sample_volume = np.load(sample_npy_path)
             volume_depth = sample_volume.shape[2]
-            n_slice = 83
+            n_slice = 43
             print(f"Visualizing slice {n_slice} for {patient_to_visualize}")
 
             # Load the ground truth mask once

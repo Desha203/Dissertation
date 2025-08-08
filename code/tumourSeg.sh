@@ -14,8 +14,9 @@
 module add languages/python/tensorflow-2.16.1
 pip install segmentation-models-3D
 
-python 1_preprocessing.py  
+#python 1_preprocessing.py  
 #python 2_Converting_to_Numpy.py  
-#python 4_Evaluation_on_Test.py    
 #python Training_Models.py
+python 4_Evaluation_on_Test.py    
+
 
