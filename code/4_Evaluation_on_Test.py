@@ -250,7 +250,7 @@ if avg_accuracy > best_accuracy:
 
 print(f"\nBest model: {best_model_name} with Mean IoU: {best_iou:.4f}")
 print(f"Model with Best Average Accuracy: {best_model_name_accuracy} with Average Accuracy: {best_accuracy:.4f} )")
-'''
+
 # Visualisation of Predictions on a Random Patient Slice Multiple Modalities ##########################
 
 # Get a random patient and slice for visualisation
@@ -280,7 +280,7 @@ else:
         if os.path.exists(sample_npy_path):
             sample_volume = np.load(sample_npy_path)
             volume_depth = sample_volume.shape[2]
-            n_slice = 43
+            n_slice = 3
             print(f"Visualizing slice {n_slice} for {patient_to_visualize}")
 
             # Load the ground truth mask once
@@ -377,3 +377,5 @@ else:
 
         else:
             print(f"Error: Sample .npy file not found at {sample_npy_path}")
+'''
+
