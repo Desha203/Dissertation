@@ -22,6 +22,8 @@ from keras.metrics import MeanIoU
 import matplotlib.pyplot as plt
 import random
 import tensorflow as tf
+from scipy.stats import bootstrap
+from sklearn.metrics import jaccard_score
 
 # Setting random seed for reproducibility
 '''
@@ -173,7 +175,39 @@ for model_file in os.listdir(model_dir):
     mean_iou = iou_metric.result().numpy()
     avg_accuracy = total_correct / total_pixels
 
-    print(f"Mean IoU: {mean_iou:.4f}")
+    # Compute per-patient IoU for bootstrapping confidence intervals
+
+    per_patient_ious = []
+
+    # Re-run generator to collect per-patient IoUs
+    test_img_datagen = imageLoader(test_dir, test_patient_list, batch_size, modality_indices)
+    for patient_idx in range(len(test_patient_list)):
+        test_image_batch, test_mask_batch = next(test_img_datagen)
+        test_mask_batch_argmax = np.argmax(test_mask_batch, axis=-1)
+        test_pred_batch = model.predict(test_image_batch)
+        test_pred_batch_argmax = np.argmax(test_pred_batch, axis=-1)
+
+        # For each patient in the batch
+        for i in range(test_image_batch.shape[0]):
+            true = test_mask_batch_argmax[i].flatten()
+            pred = test_pred_batch_argmax[i].flatten()
+            iou = jaccard_score(true, pred, average='macro', labels=list(range(n_classes)))
+            per_patient_ious.append(iou)
+
+    per_patient_ious = np.array(per_patient_ious)
+
+    # Bootstrapping over per-patient IoUs
+    res = bootstrap(
+        (per_patient_ious,),
+        np.mean,
+        confidence_level=0.95,
+        n_resamples=1000,
+        method='basic',
+        random_state=42
+    )
+    iou_ci_lower, iou_ci_upper = res.confidence_interval
+
+    print(f"Mean IoU: {mean_iou:.4f} (95% CI: {iou_ci_lower:.4f} - {iou_ci_upper:.4f})")
     print(f"Average Accuracy: {avg_accuracy:.4f}")
 
     # Track best model
