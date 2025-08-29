@@ -131,7 +131,18 @@ best_accuracy = 0
 best_model_name_accuracy = None
 best_iou_for_best_accuracy = 0
 
-# Mean IOU and Accuracy Evaluation #################################################
+import os
+import re
+import numpy as np
+from tensorflow.keras.models import load_model
+from sklearn.metrics import jaccard_score
+from scipy.stats import bootstrap
+
+# Track best models
+best_iou = -1
+best_accuracy = -1
+best_model_name = ""
+best_model_name_accuracy = ""
 
 for model_file in os.listdir(model_dir):
     if not (model_file.endswith('.hdf5') or model_file.endswith('.keras')):
@@ -147,56 +158,37 @@ for model_file in os.listdir(model_dir):
     # Load model
     model = load_model(model_path, compile=False)
 
-    # Re-init the generator
+    # Re-initialize test generator
     test_img_datagen = imageLoader(test_dir, test_patient_list, batch_size, modality_indices)
 
-    # Set up metrics
-    iou_metric = MeanIoU(num_classes=n_classes)
+    per_patient_ious = []
     total_correct = 0
     total_pixels = 0
 
-    num_batches = len(test_patient_list) // batch_size
-
-    for _ in range(num_batches):
-        test_image_batch, test_mask_batch = next(test_img_datagen)
-        test_mask_batch_argmax = np.argmax(test_mask_batch, axis=-1)
-
-        test_pred_batch = model.predict(test_image_batch)
-        test_pred_batch_argmax = np.argmax(test_pred_batch, axis=-1)
-
-        # Update IoU
-        iou_metric.update_state(test_mask_batch_argmax.flatten(), test_pred_batch_argmax.flatten())
-
-        # Update accuracy
-        total_correct += np.sum(test_mask_batch_argmax == test_pred_batch_argmax)
-        total_pixels += test_mask_batch_argmax.size
-
-    # Final metrics per model
-    mean_iou = iou_metric.result().numpy()
-    avg_accuracy = total_correct / total_pixels
-
-    # Compute per-patient IoU for bootstrapping confidence intervals
-
-    per_patient_ious = []
-
-    # Re-run generator to collect per-patient IoUs
-    test_img_datagen = imageLoader(test_dir, test_patient_list, batch_size, modality_indices)
+    # Collect per-patient IoUs and pixel-wise accuracy
     for patient_idx in range(len(test_patient_list)):
         test_image_batch, test_mask_batch = next(test_img_datagen)
         test_mask_batch_argmax = np.argmax(test_mask_batch, axis=-1)
         test_pred_batch = model.predict(test_image_batch)
         test_pred_batch_argmax = np.argmax(test_pred_batch, axis=-1)
 
-        # For each patient in the batch
         for i in range(test_image_batch.shape[0]):
             true = test_mask_batch_argmax[i].flatten()
             pred = test_pred_batch_argmax[i].flatten()
+
+            # Compute per-patient macro IoU
             iou = jaccard_score(true, pred, average='macro', labels=list(range(n_classes)))
             per_patient_ious.append(iou)
 
-    per_patient_ious = np.array(per_patient_ious)
+            # Compute pixel-level accuracy
+            total_correct += np.sum(true == pred)
+            total_pixels += true.size
 
-    # Bootstrapping over per-patient IoUs
+    per_patient_ious = np.array(per_patient_ious)
+    mean_per_patient_iou = np.mean(per_patient_ious)
+    avg_accuracy = total_correct / total_pixels
+
+    # Bootstrap the mean of per-patient IoUs
     res = bootstrap(
         (per_patient_ious,),
         np.mean,
@@ -205,22 +197,22 @@ for model_file in os.listdir(model_dir):
         method='basic',
         random_state=42
     )
-    iou_ci_lower, iou_ci_upper = res.confidence_interval
+    ci_low, ci_high = res.confidence_interval
 
-    print(f"Mean IoU: {mean_iou:.4f} (95% CI: {iou_ci_lower:.4f} - {iou_ci_upper:.4f})")
+    # Print metrics
+    print(f"Mean Per-Patient Macro IoU: {mean_per_patient_iou:.4f} (95% CI: {ci_low:.4f} - {ci_high:.4f})")
     print(f"Average Accuracy: {avg_accuracy:.4f}")
 
-    # Track best model
-    if mean_iou > best_iou:
-        best_iou = mean_iou
+    # Track best model based on IoU and accuracy
+    if mean_per_patient_iou > best_iou:
+        best_iou = mean_per_patient_iou
         best_model_name = model_file
 
     if avg_accuracy > best_accuracy:
         best_accuracy = avg_accuracy
         best_model_name_accuracy = model_file
 
-print(f"\nBest model: {best_model_name} with Mean IoU: {best_iou:.4f}")
-print(f"Model with Best Average Accuracy: {best_model_name_accuracy} with Average Accuracy: {best_accuracy:.4f})")
-
-
+# Summary
+print(f"\nBest model (Per-Patient IoU): {best_model_name} with IoU: {best_iou:.4f}")
+print(f"Best model (Accuracy): {best_model_name_accuracy} with Accuracy: {best_accuracy:.4f}")
 
